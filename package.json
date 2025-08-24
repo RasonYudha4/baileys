@@ -1,25 +1,27 @@
 {
-  "name": "wa-bot",
+  "name": "whatsapp-bot",
   "version": "1.0.0",
-  "type": "module",                     
+  "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "node --loader ts-node/esm index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "dev": "tsx watch index.ts",
+    "dev:ts-node": "node --loader ts-node/esm index.ts",
+    "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@hapi/boom": "^10.0.1",
-    "baileys": "^6.7.18",
-    "pg": "^8.16.3",
-    "pino": "^9.5.0",
+    "baileys": "^6.0.0",
+    "@hapi/boom": "^10.0.0",
+    "pg": "^8.11.0",
+    "pino": "^8.19.0",
     "qrcode-terminal": "^0.12.0"
   },
   "devDependencies": {
-    "@types/node": "^24.3.0",
-    "@types/pg": "^8.15.5",
-    "@types/qrcode-terminal": "^0.12.2",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.9.2"
+    "@types/node": "^20.0.0",
+    "@types/pg": "^8.10.0",
+    "typescript": "^5.0.0",
+    "tsx": "^4.0.0",
+    "ts-node": "^10.9.0"
   }
 }

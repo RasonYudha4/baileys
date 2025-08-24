@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",                 // Latest JS features
+    "module": "NodeNext",               // ESM support
+    "moduleResolution": "NodeNext",     // Required for ESM
+    "outDir": "./dist",                 // Compiled output
+    "rootDir": "./",                    // Source location
+    "esModuleInterop": true,            // Easier import compatibility
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true
+  },
+  "include": ["index.ts", "src/**/*"]
+}

@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { WhatsAppBot } from "./WhatsAppBot.js";
 
 const bot = new WhatsAppBot();

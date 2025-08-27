@@ -11,6 +11,8 @@ export class WhatsAppBot {
   private sock: any;
   private messageHandler: MessageHandler | null = null;
   private config = ConfigService.getInstance();
+  private isConnecting = false; 
+  private processedMessages = new Set<string>(); 
 
   async initialize(): Promise<void> {
     console.log("🚀 Initializing WhatsApp Bot...");
@@ -32,7 +34,17 @@ export class WhatsAppBot {
   }
 
   private async connect(): Promise<void> {
+    if (this.isConnecting) {
+      console.log("🔄 Connection already in progress, skipping...");
+      return;
+    }
+
+    this.isConnecting = true;
+
     try {
+      // Clean up existing connection
+      await this.cleanup();
+
       const { state, saveCreds } = await useMultiFileAuthState("auth_info");
       
       this.sock = makeWASocket({
@@ -46,8 +58,25 @@ export class WhatsAppBot {
       
     } catch (error) {
       console.error("❌ Failed to connect:", error);
+      this.isConnecting = false;
       throw error;
     }
+  }
+
+  private async cleanup(): Promise<void> {
+    if (this.sock) {
+      try {
+        // Remove all event listeners to prevent memory leaks
+        this.sock.ev.removeAllListeners();
+        // End the socket connection
+        this.sock.end();
+        console.log("🧹 Cleaned up previous socket connection");
+      } catch (error) {
+        console.error("⚠️ Error during cleanup:", error);
+      }
+    }
+    this.sock = null;
+    this.messageHandler = null;
   }
 
   private setupEventHandlers(saveCreds: () => void): void {
@@ -60,6 +89,7 @@ export class WhatsAppBot {
       }
       
       if (connection === 'close') {
+        this.isConnecting = false;
         const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
         console.log('🔌 Connection closed due to', lastDisconnect?.error, ', reconnecting:', shouldReconnect);
         
@@ -67,6 +97,7 @@ export class WhatsAppBot {
           setTimeout(() => this.connect(), 5000); // 5 second delay before reconnecting
         }
       } else if (connection === 'open') {
+        this.isConnecting = false;
         console.log('✅ Bot Started Successfully!');
       }
     });
@@ -74,6 +105,31 @@ export class WhatsAppBot {
     this.sock.ev.on("messages.upsert", async (m: any) => {
       for (const msg of m.messages) {
         try {
+          if (msg.key.fromMe) {
+            continue;
+          }
+
+          const messageId = `${msg.key.remoteJid}_${msg.key.id}_${msg.messageTimestamp}`;
+          
+          if (this.processedMessages.has(messageId)) {
+            console.log(`⏭️ Skipping already processed message ${messageId}`);
+            continue;
+          }
+
+          const messageTime = (msg.messageTimestamp || 0) * 1000;
+          const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+          if (messageTime < fiveMinutesAgo) {
+            console.log(`⏭️ Skipping old message from ${new Date(messageTime)}`);
+            continue;
+          }
+
+          this.processedMessages.add(messageId);
+
+          if (this.processedMessages.size > 1000) {
+            const entries = Array.from(this.processedMessages);
+            this.processedMessages = new Set(entries.slice(-500));
+          }
+
           await this.messageHandler?.handleMessage(msg);
         } catch (error) {
           console.error("❌ Error handling message:", error);
@@ -96,6 +152,7 @@ export class WhatsAppBot {
   // Graceful shutdown
   async shutdown(): Promise<void> {
     console.log("🔄 Shutting down bot...");
-    this.sock?.end();
+    await this.cleanup();
+    this.processedMessages.clear();
   }
 }
